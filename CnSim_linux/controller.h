@@ -52,8 +52,8 @@ class FLController {
 
     public:
         // double calculateTau(int index, double joint_error, double joint_error_dot);
-        double calculateTau(int index, double theta1_ddot_desired_d, double joint_error, double joint_error_dot, 
-                                  double theta1, double theta2, double theta1_dot, double theta2_dot);
+        double  calculateTau(int index, double theta1_ddot_desired_d, double joint_error, double joint_error_dot, 
+                                  double theta1, double theta2, double theta1_dot, double theta2_dot, double gear_ratio);
         
     
 };
