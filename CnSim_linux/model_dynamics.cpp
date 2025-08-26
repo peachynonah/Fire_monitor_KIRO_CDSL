@@ -1,6 +1,7 @@
 # include <iostream>
 # include <cmath>
-# include <vector>
+// # include <vector>
+# include <array>
 # include "model_dynamics.h"
 
 using namespace std;
@@ -25,7 +26,8 @@ ModelDynamics::ModelDynamics() {
 }
 
 // Method to compute the mass matrix given joint angles
-std::vector<double> ModelDynamics::get_mass_matrix(double theta1, double theta2) {
+//std::vector<double> ModelDynamics::get_mass_matrix(double theta1, double theta2) {
+std::array<double, 4> ModelDynamics::get_mass_matrix(double theta1, double theta2) {
 
     //redefine robot properties
     double d1 = DH_param_dist[0]; double d2 = DH_param_dist[1];
@@ -42,7 +44,8 @@ std::vector<double> ModelDynamics::get_mass_matrix(double theta1, double theta2)
 }
 
 // Method to compute the nonlinear dynamics terms given joint angles and velocities
-std::vector<double> ModelDynamics::get_nonlinear_dynamics(double theta1, double theta2, double theta1_dot, double theta2_dot) {
+// std::vector<double> ModelDynamics::get_nonlinear_dynamics(double theta1, double theta2, double theta1_dot, double theta2_dot) {
+std::array<double, 2> ModelDynamics::get_nonlinear_dynamics(double theta1, double theta2, double theta1_dot, double theta2_dot) {
     
     //redefine robot properties
     double d1 = DH_param_dist[0]; double d2 = DH_param_dist[1];

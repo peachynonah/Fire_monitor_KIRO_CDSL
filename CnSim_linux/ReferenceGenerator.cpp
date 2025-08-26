@@ -37,16 +37,43 @@ ReferenceGenerator::ReferenceGenerator() {
     // alpha_coeffs[5] = -1.035690e-06; alpha_coeffs[4] = 0.0004919527; alpha_coeffs[3] = -0.00638675;
     // alpha_coeffs[2] = 0.0; alpha_coeffs[1] = 0.0; alpha_coeffs[0] = current_joint1_position;
 
-    // //////////// Bit slower.......
+
+
+    // // //////////// Bit slower.......: Reference generator accleration error version
     // //situation6: start at 0.0, finish at pi/2 : anticlockwise
-    // time_ref_start = 0.0; time_ref_fin = 17.0; current_joint1_position = -1.4860;
-    // alpha_coeffs[5] = -6.637836e-06; alpha_coeffs[4] = 0.000282108; alpha_coeffs[3] = -0.003197224;
+    // time_ref_start = 0.0; time_ref_fin = 17.0; current_joint1_position = -1.76500;
+    // alpha_coeffs[5] = 4.1228795256e-08; alpha_coeffs[4] = -5.7823385e-05; alpha_coeffs[3] = 0.0012908048;
     // alpha_coeffs[2] = 0.0; alpha_coeffs[1] = 0.0; alpha_coeffs[0] = current_joint1_position;
 
-    //situation7: start at 0.0, finish at minus pi/2 : clockwise
-    time_ref_start = 0.0; time_ref_fin = 17.0; current_joint1_position = 0.0;
-    alpha_coeffs[5] = 6.637836e-06; alpha_coeffs[4] = -0.000282108; alpha_coeffs[3] = 0.003197224;
+    // //situation7: start at 0.0, finish at minus pi/2 : clockwise
+    // time_ref_start = 0.0; time_ref_fin = 17.0; current_joint1_position = -0.298;
+    // alpha_coeffs[5] = -4.1228795256e-08; alpha_coeffs[4] = 5.7823385e-05; alpha_coeffs[3] = -0.0012908048;
+    // alpha_coeffs[2] = 0.0; alpha_coeffs[1] = 0.0; alpha_coeffs[0] = current_joint1_position;
+
+   
+    // // //////////// Reference Generator accleartion corrected.
+    // //situation6: start at 0.0, finish at pi/2 : anticlockwise
+    // time_ref_start = 0.0; time_ref_fin = 17.0; current_joint1_position = -1.80;
+    // alpha_coeffs[5] = 6.637836036e-06; alpha_coeffs[4] = -0.0002821080315; alpha_coeffs[3] = 0.003197224357;
+    // alpha_coeffs[2] = 0.0; alpha_coeffs[1] = 0.0; alpha_coeffs[0] = current_joint1_position;
+
+    // //situation7: start at 0.0, finish at minus pi/2 : clockwise
+    // time_ref_start = 0.0; time_ref_fin = 17.0; current_joint1_position = -0.349;
+    // alpha_coeffs[5] = -6.637836036e-06; alpha_coeffs[4] = 0.0002821080315; alpha_coeffs[3] = -0.003197224357;
+    // alpha_coeffs[2] = 0.0; alpha_coeffs[1] = 0.0; alpha_coeffs[0] = current_joint1_position;
+
+
+    //////// bit slower....
+    // //situation8: start at 0.0, finish at pi/2 : anticlockwise
+    // time_ref_start = 0.0; time_ref_fin = 22.0; current_joint1_position = -1.706;
+    // alpha_coeffs[5] = 1.8287642508e-06; alpha_coeffs[4] = -0.00010058203; alpha_coeffs[3] = 0.001475203162;
+    // alpha_coeffs[2] = 0.0; alpha_coeffs[1] = 0.0; alpha_coeffs[0] = current_joint1_position;
+
+    //situation9: start at 0.0, finish at minus pi/2 : clockwise
+    time_ref_start = 0.0; time_ref_fin = 22.0; current_joint1_position = -0.27;
+    alpha_coeffs[5] = -1.8287642508e-06; alpha_coeffs[4] = 0.00010058203; alpha_coeffs[3] = -0.001475203162;
     alpha_coeffs[2] = 0.0; alpha_coeffs[1] = 0.0; alpha_coeffs[0] = current_joint1_position;
+
 
 // sudo mv /home/kiro/workspace/CnSim_linux/cdsl_data.csv /home/kiro/CDSL/CDSL_f
 // ire_monitor_control/csv_datas/trial3/cdsl_data_t3_12.csv

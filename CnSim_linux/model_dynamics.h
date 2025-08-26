@@ -1,7 +1,8 @@
 #pragma once
 # include <iostream>
 # include <cmath>
-# include <vector>
+// # include <vector>
+# include <array>
 
 #define MM_to_M 1e-3
 
@@ -21,8 +22,8 @@ class ModelDynamics {
         double nonlinear_dynamics_term[2];
 
     public:
-        std::vector<double> get_mass_matrix(double theta1, double theta2);
-        std::vector<double> get_nonlinear_dynamics(double theta1, double theta2, double theta1_dot, double theta2_dot);
+        std::array<double, 4> get_mass_matrix(double theta1, double theta2);
+        std::array<double, 2> get_nonlinear_dynamics(double theta1, double theta2, double theta1_dot, double theta2_dot);
         double h1_cori, h1_cent, h1_grav;
         double h2_cori, h2_cent, h2_grav;
 };
