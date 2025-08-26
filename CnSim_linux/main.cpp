@@ -30,6 +30,7 @@ CCAN_Manager m_canManager;
 ManualController m_manual_controller;
 PDController m_PD_controller;
 FLController m_FL_controller;
+DOBController m_DOB_controller;
 #include "ReferenceGenerator.h"
 ReferenceGenerator m_reference_generator;
 LowPassFilter m_low_pass_filter;
@@ -39,6 +40,9 @@ double theta1_dot_d = 0.0; double theta2_dot_d = 0.0;
 double theta1_dot_d_filtered = 0.0; double theta2_dot_d_filtered = 0.0;
 double jPos1_prev = 0.0; double jPos2_prev = 0.0;
 double theta1_dot_d_prev = 0.0; double theta2_dot_d_prev = 0.0;
+std::array<double, 2> u_hat = {0.0, 0.0};
+std::array<double, 2> u_FL = {0.0, 0.0};
+std::array<double, 2> estimated_disturbance = {0.0, 0.0};
 #include <fstream>
 //------ CDSL Controller code ------//
 
@@ -210,9 +214,20 @@ static void *run_rtCycle(void *pParam)
 
 		case ctrl_fl_dob:
 			{
-			control_torque[0] = 0;
-			control_torque[0] = 0;
-			// printf("\ninput of FL controller is (%d, %d)\n", control_torque[0], control_torque[1]);
+			//FL 제어기 먼저 실행
+			u_FL[0] = m_FL_controller.calculateTau(0, theta1_ddot_desired_d, joint_error_1, joint_error_1_dot,
+				jPos[0], jPos[1], theta1_dot_d_filtered, theta2_dot_d_filtered);
+			u_FL[1] = m_FL_controller.calculateTau(1, theta1_ddot_desired_d, joint_error_1, joint_error_1_dot,
+				jPos[0], jPos[1], theta1_dot_d_filtered, theta2_dot_d_filtered);
+
+			// double time_constant = 5e-3; // 튜닝 파라미터
+			double time_constant = 0.9;
+			estimated_disturbance = m_DOB_controller.EstimateDisturbance(jPos[0], jPos[1], theta1_dot_d_filtered, theta2_dot_d_filtered, u_hat, time_constant);
+			u_hat = u_FL - estimated_disturbance; //update
+			
+			control_torque[0] = static_cast<int>(u_hat[0]);
+			control_torque[1] = static_cast<int>(u_hat[1]);
+			// printf("\ninput of DOB controller is (%d, %d)\n", control_torque[0], control_torque[1]);
 			break;
 			}
 
