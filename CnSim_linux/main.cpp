@@ -183,12 +183,13 @@ static void *run_rtCycle(void *pParam)
 		case ctrl_fl:
 			{
 			double global_theta_2_fixed = 0.0;
+
 			control_torque[0] = m_FL_controller.calculateTau(0, theta1_ddot_desired_d, joint_error_1, joint_error_1_dot,
                                  							 jPos[0], global_theta_2_fixed, 
-															 theta1_dot_d_filtered, theta2_dot_d_filtered);
+															 theta1_dot_d_filtered, theta2_dot_d_filtered, m_canManager.m_Dev[0].m_Gear_Ratio);
 			control_torque[1] = m_FL_controller.calculateTau(1, theta1_ddot_desired_d, joint_error_1, joint_error_1_dot,
                                  							 jPos[0], global_theta_2_fixed, 
-															 theta1_dot_d_filtered, theta2_dot_d_filtered);;
+															 theta1_dot_d_filtered, theta2_dot_d_filtered, m_canManager.m_Dev[1].m_Gear_Ratio);
 			printf("\ninput of FL controller in main is (%d, %d)\n", control_torque[0], control_torque[1]);
 
 			
