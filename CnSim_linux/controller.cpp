@@ -2,6 +2,7 @@
 # include "controller.h"
 # include "model_dynamics.h"
 # include <vector>
+# include <array>
 using namespace std;
 
 ModelDynamics m_model_dynamics;
@@ -114,6 +115,50 @@ double FLController::tauPropo(int index, double joint_error) {
 double FLController::tauDeriv(int index, double joint_error_dot) {
     tau_deriv[index] = - 0.0;    
     return tau_deriv[index];
+}
+
+
+DOBController::DOBController() {
+}
+std::array<double, 2> DOBController::EstimateDisturbance(double theta1, double theta2,
+    double theta1_dot, double theta2_dot, std::array<double, 2> u_hat, double time_constant){
+    if (flag == false){
+        flag = true;
+        for (int i=0; i<2; i++){
+            y_a_prev[i] = 0.0;
+            y_b_prev[i] = 0.0;
+        }
+    }
+    for (int i=0; i<2; i++){
+        x_a[i] = u_hat[i];
+        x_b[i] = theta1_dot;
+        
+        y_a[i] = lowpassfilter.calculate_lowpass_filter(x_a[i], y_a_prev[i]);
+        y_b[i] = lowpassfilter.calculate_lowpass_filter(x_b[i], y_b_prev[i]);
+        y_b_dot[i] = (-y_b[i] + x_b[i]) / time_constant; //jPos_two_dot
+        
+        //update previous values
+        y_a_prev[i] = y_a[i];
+        y_b_prev[i] = y_b[i];
+    }
+    //estimated_disturbance = M(theta){y_b_dot - h(theta, theta_dot)} - y_a
+    std::vector<double> mass_matrix = m_model_dynamics.get_mass_matrix(theta1, theta2);
+    double m11 = mass_matrix[0]; double m12 = mass_matrix[1]; 
+    double m21 = mass_matrix[2]; double m22 = mass_matrix[3]; 
+    
+    std::vector<double> nonlinear_dynamics_term = m_model_dynamics.get_nonlinear_dynamics(theta1, theta2, theta1_dot, theta2_dot);
+    double h1 = nonlinear_dynamics_term[0];
+    double h2 = nonlinear_dynamics_term[1];
+    
+    estimated_disturbance[0] = m11 * (y_b_dot[0] - h1) + m12 * (y_b_dot[1] - h2) - y_a[0];
+    estimated_disturbance[1] = m21 * (y_b_dot[0] - h1) + m22 * (y_b_dot[1] - h2) - y_a[1];
+
+    for(int i=0; i<2; i++){
+        estimated_disturbance[i] = 1e3* estimated_disturbance[i]; // mNm
+        estimated_disturbance[i] = static_cast<int>((1e3 / 52.8)*(1/4440)*estimated_disturbance[i]); // Thousand Per Rated Torque
+        estimated_disturbance[i] = - torque_saturate(estimated_disturbance[i], 2700);
+    }
+    return estimated_disturbance;
 }
 
 

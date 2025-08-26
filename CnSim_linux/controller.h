@@ -58,6 +58,23 @@ class FLController {
     
 };
 
+class DOBController {
+    private:
+        LowPassFilter lowpassfilter;
+    public:
+        double x_a[2], x_b[2];
+        double y_a[2], y_b[2];
+        double y_a_prev[2], y_b_prev[2];
+        double y_b_dot[2];
+        double theta1_dot[2], theta2_dot[2];
+        std::array<double, 2> estimated_disturbance;
+        std::array<double, 2> u_hat; // u_hat = tau_FL - estimated_disturbance
+        bool flag = false;
+        DOBController();
+    public:
+        std::array<double, 2> EstimateDisturbance(double theta1, double theta2, 
+        double theta1_dot, double theta2_dot, std::array<double, 2> u_hat, double time_constant=5e-3);
+};
 
 class LowPassFilter {
     public:

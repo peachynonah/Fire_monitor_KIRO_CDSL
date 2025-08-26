@@ -39,13 +39,13 @@ ReferenceGenerator::ReferenceGenerator() {
 
     // //////////// Bit slower.......
     // //situation6: start at 0.0, finish at pi/2 : anticlockwise
-    // time_ref_start = 0.0; time_ref_fin = 17.0; current_joint1_position = -1.65;
-    // alpha_coeffs[5] = 4.1228795256e-08; alpha_coeffs[4] = -5.7823385e-05; alpha_coeffs[3] = 0.0012908048;
+    // time_ref_start = 0.0; time_ref_fin = 17.0; current_joint1_position = -1.4860;
+    // alpha_coeffs[5] = -6.637836e-06; alpha_coeffs[4] = 0.000282108; alpha_coeffs[3] = -0.003197224;
     // alpha_coeffs[2] = 0.0; alpha_coeffs[1] = 0.0; alpha_coeffs[0] = current_joint1_position;
 
     //situation7: start at 0.0, finish at minus pi/2 : clockwise
-    time_ref_start = 0.0; time_ref_fin = 17.0; current_joint1_position = -0.196;
-    alpha_coeffs[5] = -4.1228795256e-08; alpha_coeffs[4] = 5.7823385e-05; alpha_coeffs[3] = -0.0012908048;
+    time_ref_start = 0.0; time_ref_fin = 17.0; current_joint1_position = 0.0;
+    alpha_coeffs[5] = 6.637836e-06; alpha_coeffs[4] = -0.000282108; alpha_coeffs[3] = 0.003197224;
     alpha_coeffs[2] = 0.0; alpha_coeffs[1] = 0.0; alpha_coeffs[0] = current_joint1_position;
 
 // sudo mv /home/kiro/workspace/CnSim_linux/cdsl_data.csv /home/kiro/CDSL/CDSL_f

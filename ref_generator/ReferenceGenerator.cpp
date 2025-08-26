@@ -11,9 +11,9 @@ ReferenceGenerator::ReferenceGenerator() {
     time_ref_start = 0.0;
     time_ref_fin = 10.0;
 
-    alpha_coeffs[5] = 6.90459e-07;
-    alpha_coeffs[4] = -0.000327968;
-    alpha_coeffs[3] = 0.00425783619;
+    alpha_coeffs[5] = 6.637836e-06;
+    alpha_coeffs[4] = -0.000282108;
+    alpha_coeffs[3] = 0.003197224;
     alpha_coeffs[2] = 0.0;
     alpha_coeffs[1] = 0.0;
     alpha_coeffs[0] = 0.0;

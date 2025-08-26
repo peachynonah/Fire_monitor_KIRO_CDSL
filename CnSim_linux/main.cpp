@@ -211,7 +211,6 @@ static void *run_rtCycle(void *pParam)
 			break;
 			}
 
-
 		case ctrl_fl_dob:
 			{
 			//FL 제어기 먼저 실행
@@ -230,7 +229,7 @@ static void *run_rtCycle(void *pParam)
 			// printf("\ninput of DOB controller is (%d, %d)\n", control_torque[0], control_torque[1]);
 			break;
 			}
-
+			
 		default:
 			{
 			control_torque[0] = 0;

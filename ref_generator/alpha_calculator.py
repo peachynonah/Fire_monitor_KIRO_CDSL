@@ -8,7 +8,7 @@ tilde_time_sf = time_ref_fin - time_ref_start
 ## joint 1 
 [theta_ref_start_1, theta_dot_ref_start_1, theta_ddot_ref_start_1] = [0.0, 0.0, 0.0]
 [theta_ref_fin_1, theta_dot_ref_fin_1, theta_ddot_ref_fin_1] = [0.0, 0.0, 0.0]
-theta_ref_fin_1 = (np.pi/3)
+theta_ref_fin_1 = (np.pi/2)
 
 ## joint 2 
 [theta_ref_start_2, theta_dot_ref_start_2, theta_ddot_ref_start_2] = [0.0, 0.0, 0.0]
@@ -23,7 +23,7 @@ PHI = np.array([
     [0,                 0,        0,        2,        0,     0],  
     [   tsf**5,    tsf**4,   tsf**3,   tsf**2, tsf**1,       1],
     [ 5*tsf**4,  4*tsf**3, 3*tsf**2,    2*tsf,      1,       0],
-    [20*tsf**4, 12*tsf**2,    6*tsf,        2,      0,       0]
+    [20*tsf**3, 12*tsf**2,    6*tsf,        2,      0,       0]
 ])
 
 print("Matrix PHI:")
