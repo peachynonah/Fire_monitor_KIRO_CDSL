@@ -167,8 +167,8 @@ std::array<double, 2> DOBController::EstimateDisturbance(double theta1, double t
         x_a[i] = u_hat[i];
         //x_b[i] = theta1_dot;
         
-        y_a[i] = m_lowpassfilter_dob.calculate_lowpass_filter(x_a[i], y_a_prev[i]);
-        y_b[i] = m_lowpassfilter_dob.calculate_lowpass_filter(x_b[i], y_b_prev[i]);
+        y_a[i] = m_lowpassfilter_dob.calculate_lowpass_filter(x_a[i], y_a_prev[i], time_constant);
+        y_b[i] = m_lowpassfilter_dob.calculate_lowpass_filter(x_b[i], y_b_prev[i], time_constant);
         y_b_dot[i] = (-y_b[i] + x_b[i]) / time_constant; //jPos_two_dot
         
         //update previous values
@@ -184,11 +184,23 @@ std::array<double, 2> DOBController::EstimateDisturbance(double theta1, double t
     std::array<double, 2> nonlinear_dynamics_term = m_model_dynamics.get_nonlinear_dynamics(theta1, theta2, theta1_dot, theta2_dot);
     double h1 = nonlinear_dynamics_term[0];
     double h2 = nonlinear_dynamics_term[1];
+
+    printf("m11 : {%f}\n", m11);
+    printf("m12 : {%f}\n", m12);
+    printf("m21 : {%f}\n", m21);
+    printf("m22 : {%f}\n", m22);
+    printf("h1 : {%f}\n", h1);
+    printf("h2 : {%f}\n", h2);
     
-    // estimated_disturbance[0] = m11 * (y_b_dot[0]) + m12 * (y_b_dot[1]) + h1 - y_a[0];
-    // estimated_disturbance[1] = m21 * (y_b_dot[0]) + m22 * (y_b_dot[1]) + h2 - y_a[1];
-    estimated_disturbance[0] = m11 * (y_b_dot[0]) + m12 * (y_b_dot[1]) + h1;
-    estimated_disturbance[1] = - y_a[0];   
+    printf("y_a_prev[0] : {%f}\n", y_a_prev[0]);
+    printf("y_a_prev[1] : {%f}\n", y_a_prev[1]);
+    printf("y_b_dot[0] : {%f}\n", y_b_dot[0]);
+    
+    
+    estimated_disturbance[0] = m11 * (y_b_dot[0]) + m12 * (y_b_dot[1]) + h1 - y_a[0];
+    estimated_disturbance[1] = m21 * (y_b_dot[0]) + m22 * (y_b_dot[1]) + h2 - y_a[1];
+    // estimated_disturbance[0] = m11 * (y_b_dot[0]) + m12 * (y_b_dot[1]) + h1;
+    // estimated_disturbance[1] = - y_a[0]; 
     return estimated_disturbance;
 }
 

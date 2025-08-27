@@ -50,7 +50,8 @@ double theta1_dot_d_prev = 0.0; double theta2_dot_d_prev = 0.0;
 std::array<double, 2> u_hat;
 std::array<double, 2> u_FL;
 std::array<double, 2> estimated_disturbance;
-
+std::array<double, 2> applied_tau;
+std::array<double, 2> estimated_disturbance_not_limited;
 #include <fstream>
 //------ CDSL Controller code ------//
 
@@ -131,7 +132,7 @@ static void *run_rtCycle(void *pParam)
 		// printf("\n current joint_1 velocity is : %f", theta_dot_d);
 
 		//---1-3. low pass filter
-		theta1_dot_d_filtered = m_low_pass_filter.calculate_lowpass_filter(theta1_dot_d, theta1_dot_d_prev);
+		theta1_dot_d_filtered = m_low_pass_filter.calculate_lowpass_filter(theta1_dot_d, theta1_dot_d_prev, 0.008);
 		theta1_dot_d_prev = theta1_dot_d_filtered;
 		printf("\n filtered joint_1 velocity is : %f", theta1_dot_d_filtered);
 
@@ -241,11 +242,11 @@ static void *run_rtCycle(void *pParam)
 			std::array<double, 4> torque_calculate = m_FL_controller.calculateTau(theta1_ddot_desired_d, joint_error_1, joint_error_1_dot,
                                 							 					 	  jPos[0], global_theta_2_fixed, 
 			 																	      theta1_dot_d_filtered, theta2_dot_d_filtered); // torque_Nm
-			printf("u_FL_1 : {%f}\n" , u_FL[0]);
-			printf("u_FL_2 : {%f}\n" , u_FL[1]);
+			// printf("u_FL_1 : {%f}\n" , u_FL[0]);
+			// printf("u_FL_2 : {%f}\n" , u_FL[1]);
 			
-			printf("u_hat_1 : {%f}\n" , u_hat[0]);
-			printf("u_hat_2 : {%f}\n" , u_hat[1]);
+			// printf("u_hat_1 : {%f}\n" , u_hat[0]);
+			// printf("u_hat_2 : {%f}\n" , u_hat[1]);
 
 			u_FL[0] = torque_calculate[0]; // [Nm]
 			u_FL[1] = torque_calculate[1]; // [Nm]
@@ -257,25 +258,32 @@ static void *run_rtCycle(void *pParam)
 			printf("estimated_disturbance_1 : {%f} \n" , estimated_disturbance[0]);
 			printf("estimated_disturbance_2 : {%f} \n" , estimated_disturbance[1]);
 
-			// estimated_disturbance[0] = m_real_world_configurer.TorqueSaturation(estimated_disturbance[0], 20); // Nm
-			// estimated_disturbance[1] = 0.0; // m_real_world_configurer.TorqueSaturation(estimated_disturbance[1], 20 * 1e-3); // Nm
+			// estimated_disturbance_not_limited[0] = estimated_disturbance[0];
+			// estimated_disturbance_not_limited[1] = estimated_disturbance[1];
 
-			// u_hat[0] = u_FL[0] - estimated_disturbance[0]; //update
-			// u_hat[1] = u_FL[1] - estimated_disturbance[1]; //update
+			estimated_disturbance[0] = m_real_world_configurer.TorqueSaturation(estimated_disturbance[0], 120); // Nm
+			estimated_disturbance[1] = 0.0; // m_real_world_configurer.TorqueSaturation(estimated_disturbance[1], 20 * 1e-3); // Nm
 
-			u_hat[0] = u_FL[0]; //update
-			u_hat[1] = u_FL[1]; //update
+			u_hat[0] = u_FL[0] - estimated_disturbance[0]; //update
+			u_hat[1] = u_FL[1] - estimated_disturbance[1]; //update
+			// u_hat[0] = u_FL[0]; //update
+			// u_hat[1] = u_FL[1]; //update		
+
+			applied_tau[0] = u_FL[0]  - estimated_disturbance[0];
+			applied_tau[1] = u_FL[1]  - estimated_disturbance[1];			
+			// applied_tau[0] = u_FL[0]; //update
+			// applied_tau[1] = u_FL[1]; //update
 
 			double disturb_comp_temp[2];
-			disturb_comp_temp[0] = m_real_world_configurer.Nm_to_permil(u_hat[0], gear_ratio);
-			disturb_comp_temp[1] = m_real_world_configurer.Nm_to_permil(u_hat[1], gear_ratio);
+			disturb_comp_temp[0] = m_real_world_configurer.Nm_to_permil(applied_tau[0], gear_ratio);
+			disturb_comp_temp[1] = m_real_world_configurer.Nm_to_permil(applied_tau[1], gear_ratio);
 			
 			// printf("\ndisturb_comp_temp[0] is (%f)", disturb_comp_temp[0]);
 			// printf("\ndisturb_comp_temp[1] is (%f)\n", disturb_comp_temp[1]);
 			
 			double ditsurbance_comp_input[2];
-			ditsurbance_comp_input[0] = m_real_world_configurer.TorqueSaturation(disturb_comp_temp[0], 1300);
-			ditsurbance_comp_input[1] = m_real_world_configurer.TorqueSaturation(disturb_comp_temp[1], 2000);
+			ditsurbance_comp_input[0] = m_real_world_configurer.TorqueSaturation(disturb_comp_temp[0], 1000);
+			ditsurbance_comp_input[1] = m_real_world_configurer.TorqueSaturation(disturb_comp_temp[1], 1000);
 			
 			// printf("\nditsurbance_comp_input[0] is (%f)", ditsurbance_comp_input[0]);
 			// printf("\nditsurbance_comp_input[1] is (%f)\n", ditsurbance_comp_input[1]);
@@ -299,11 +307,19 @@ static void *run_rtCycle(void *pParam)
 			
 			//printf("\ninput of DOB controller is (%d, %d)\n", control_torque_debug[0], control_torque_debug[1]);
 			
-			// csv file output writing
+			// // csv file output writing
 			output_file << theta1_desired_d <<"," <<jPos[0] <<"," 
 					    << theta1_dot_desired_d << "," << theta1_dot_d_filtered << "," 
-						<< u_hat[0] << "," << estimated_disturbance[0]  << "," << current_time  << std::endl;
-					
+						<< applied_tau[0] << "," 
+						<< estimated_disturbance[0]  
+						<< "," << current_time  << std::endl;
+
+			// csv file output writing(2)
+			// output_file << theta1_desired_d <<"," <<jPos[0] <<"," 
+			// 		    << theta1_dot_desired_d << "," << theta1_dot_d_filtered << "," 
+			// 			<< applied_tau[0] << "," 
+			// 			<< estimated_disturbance[0] << estimated_disturbance_not_limited[0] << "," 
+			// 			<< "," << current_time  << std::endl;
 			break;
 			}
 
@@ -393,11 +409,10 @@ int main(int nArgc, char *ppArgv[])
 	// output_file << "joint_pos_desired_1, joint_pos_1, joint_vel_desired_1, joint_vel_filtered_1, input torque_1, h term torque_1, current_time" << std::endl;
 	
 	// csv file generation for FL_DOB
-	// output_file << "joint_pos_desired_1, joint_pos_1, joint_vel_desired_1, joint_vel_filtered_1, input torque_1_w.DOB[Nm], DOB Torque Term[Nm], current_time" << std::endl;
+	output_file << "joint_pos_desired_1, joint_pos_1, joint_vel_desired_1, joint_vel_filtered_1, input torque_1_w.DOB[Nm], DOB Torque Term[Nm], current_time" << std::endl;
 	
 	// csv file generation for FL_DOB_2(estimated_disturbance term compare)
-	output_file << "joint_pos_desired_1, joint_pos_1, joint_vel_desired_1, joint_vel_filtered_1, input torque_1_w.DOB[Nm], DOB Torque Term1[Nm], DOB Torque Term2[Nm], current_time" << std::endl;
-
+	// output_file << "joint_pos_desired_1, joint_pos_1, joint_vel_desired_1, joint_vel_filtered_1, input torque_1_w.DOB[Nm], DOB Torque Term[Nm], DOB Torque_Not_Limited Term[Nm], current_time" << std::endl;
 
 	//------   create thread
 	pthread_t run_rt_cannon_thread; // real time loop for cannon control
