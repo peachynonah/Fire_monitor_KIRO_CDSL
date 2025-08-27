@@ -234,7 +234,6 @@ static void *run_rtCycle(void *pParam)
 
 		case ctrl_fl_dob:
 			{
-				
 			double global_theta_2_fixed = 0.0;
 			double gear_ratio =  m_canManager.m_Dev[0].m_Gear_Ratio;
 			
@@ -253,18 +252,19 @@ static void *run_rtCycle(void *pParam)
 		
 			//DOB torque generation [Nm]
 			// double time_constant = 5e-3; // 튜닝 파라미터
-			double time_constant = 0.;
+			double time_constant = 0.9;
 			estimated_disturbance = m_DOB_controller.EstimateDisturbance(jPos[0], jPos[1], theta1_dot_d_filtered, theta2_dot_d_filtered, u_hat, time_constant);
 			printf("estimated_disturbance_1 : {%f} \n" , estimated_disturbance[0]);
 			printf("estimated_disturbance_2 : {%f} \n" , estimated_disturbance[1]);
 
-			estimated_disturbance[0] = m_real_world_configurer.TorqueSaturation(estimated_disturbance[0], 20); // Nm
-			estimated_disturbance[1] = 0.0; // m_real_world_configurer.TorqueSaturation(estimated_disturbance[1], 20 * 1e-3); // Nm
-			
-			u_hat[0] = u_FL[0] - estimated_disturbance[0]; //update
-			u_hat[1] = u_FL[1] - estimated_disturbance[1]; //update
-			
+			// estimated_disturbance[0] = m_real_world_configurer.TorqueSaturation(estimated_disturbance[0], 20); // Nm
+			// estimated_disturbance[1] = 0.0; // m_real_world_configurer.TorqueSaturation(estimated_disturbance[1], 20 * 1e-3); // Nm
 
+			// u_hat[0] = u_FL[0] - estimated_disturbance[0]; //update
+			// u_hat[1] = u_FL[1] - estimated_disturbance[1]; //update
+
+			u_hat[0] = u_FL[0]; //update
+			u_hat[1] = u_FL[1]; //update
 
 			double disturb_comp_temp[2];
 			disturb_comp_temp[0] = m_real_world_configurer.Nm_to_permil(u_hat[0], gear_ratio);
@@ -287,7 +287,7 @@ static void *run_rtCycle(void *pParam)
 			// printf("\nditsurbance_comp_input[0]_afterinvert is (%f)", ditsurbance_comp_input[0]);
 			// printf("\nditsurbance_comp_input[1]_afterinvert is (%f)\n", ditsurbance_comp_input[1]);
 			
-			///
+			///						
 			control_torque[0] = static_cast<int>(ditsurbance_comp_input[0]);
 			control_torque[1] = static_cast<int>(ditsurbance_comp_input[1]);
 
@@ -303,7 +303,7 @@ static void *run_rtCycle(void *pParam)
 			output_file << theta1_desired_d <<"," <<jPos[0] <<"," 
 					    << theta1_dot_desired_d << "," << theta1_dot_d_filtered << "," 
 						<< u_hat[0] << "," << estimated_disturbance[0]  << "," << current_time  << std::endl;
-						
+					
 			break;
 			}
 
@@ -393,7 +393,10 @@ int main(int nArgc, char *ppArgv[])
 	// output_file << "joint_pos_desired_1, joint_pos_1, joint_vel_desired_1, joint_vel_filtered_1, input torque_1, h term torque_1, current_time" << std::endl;
 	
 	// csv file generation for FL_DOB
-	output_file << "joint_pos_desired_1, joint_pos_1, joint_vel_desired_1, joint_vel_filtered_1, input torque_1_w.DOB[Nm], DOB Torque Term[Nm], current_time" << std::endl;
+	// output_file << "joint_pos_desired_1, joint_pos_1, joint_vel_desired_1, joint_vel_filtered_1, input torque_1_w.DOB[Nm], DOB Torque Term[Nm], current_time" << std::endl;
+	
+	// csv file generation for FL_DOB_2(estimated_disturbance term compare)
+	output_file << "joint_pos_desired_1, joint_pos_1, joint_vel_desired_1, joint_vel_filtered_1, input torque_1_w.DOB[Nm], DOB Torque Term1[Nm], DOB Torque Term2[Nm], current_time" << std::endl;
 
 
 	//------   create thread
