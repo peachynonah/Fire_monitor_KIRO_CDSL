@@ -75,12 +75,6 @@ class FLController {
     
 };
 
-
-
-
-
-
-
 class DOBController {
     public:
         double x_a[2], x_b[2];
@@ -93,7 +87,7 @@ class DOBController {
         DOBController();
     public:
         std::array<double, 2> EstimateDisturbance(double theta1, double theta2, 
-        double theta1_dot, double theta2_dot, std::array<double, 2> u_hat, double time_constant=5e-3);
+        double theta1_dot, double theta2_dot, std::array<double, 2> u_hat, double time_constant=8e-3);
 };
 
 

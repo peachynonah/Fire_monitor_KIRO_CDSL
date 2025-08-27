@@ -78,8 +78,6 @@ static void *run_rtCycle(void *pParam)
 		}
 	
 		//DOB
-
-	
 		// TX process
 		// Torque Command
 		for (int i = 0; i < MAX_DOF; i++)

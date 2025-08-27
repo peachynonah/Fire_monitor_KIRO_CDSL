@@ -64,13 +64,13 @@ ReferenceGenerator::ReferenceGenerator() {
 
 
     //////// bit slower....
-    // //situation8: start at 0.0, finish at pi/2 : anticlockwise
-    // time_ref_start = 0.0; time_ref_fin = 22.0; current_joint1_position = -1.706;
+    //situation8: start at 0.0, finish at pi/2 : anticlockwise
+    // time_ref_start = 0.0; time_ref_fin = 22.0; current_joint1_position = -0.079673;
     // alpha_coeffs[5] = 1.8287642508e-06; alpha_coeffs[4] = -0.00010058203; alpha_coeffs[3] = 0.001475203162;
     // alpha_coeffs[2] = 0.0; alpha_coeffs[1] = 0.0; alpha_coeffs[0] = current_joint1_position;
 
     //situation9: start at 0.0, finish at minus pi/2 : clockwise
-    time_ref_start = 0.0; time_ref_fin = 22.0; current_joint1_position = -0.27;
+    time_ref_start = 0.0; time_ref_fin = 22.0; current_joint1_position = 1.485591;
     alpha_coeffs[5] = -1.8287642508e-06; alpha_coeffs[4] = 0.00010058203; alpha_coeffs[3] = -0.001475203162;
     alpha_coeffs[2] = 0.0; alpha_coeffs[1] = 0.0; alpha_coeffs[0] = current_joint1_position;
 
