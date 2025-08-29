@@ -2,9 +2,31 @@
 #include <iostream>
 #include <cmath>
 #include <stdexcept>
+#include <array>
 
 // 생성자
-ReferenceGenerator::ReferenceGenerator() {
+ReferenceGenerator::ReferenceGenerator(int rotate_direction, std::array<double, 6> alpha_coeffs_, double final_operating_time) {
+    //debugging_ reference generator modulation
+    time_ref_start = 0.0; time_ref_fin = final_operating_time; 
+
+    if (rotate_direction == clockwise){
+        for (int i=0; i<6; i++){
+        alpha_coeffs[i] = alpha_coeffs_[i];
+    }
+    }
+
+    else if (rotate_direction == anticlockwise){
+        alpha_coeffs[0] = alpha_coeffs_[0]; // current joint position is not inverted
+
+        for (int i=1; i<6; i++){
+        alpha_coeffs[i] = - alpha_coeffs_[i];
+    }
+    }
+        
+
+
+
+
     // //situation1: for joint 2.
     // time_ref_start = 0.0; time_ref_fin = 10.0; current_joint1_position = -0.39;
     // alpha_coeffs[5] = 1.7261498e-07; alpha_coeffs[4] = -8.199212e-05; alpha_coeffs[3] = +0.001064459;
@@ -69,10 +91,10 @@ ReferenceGenerator::ReferenceGenerator() {
     // alpha_coeffs[5] = 1.8287642508e-06; alpha_coeffs[4] = -0.00010058203; alpha_coeffs[3] = 0.001475203162;
     // alpha_coeffs[2] = 0.0; alpha_coeffs[1] = 0.0; alpha_coeffs[0] = current_joint1_position;
 
-    //situation9: start at 0.0, finish at minus pi/2 : clockwise
-    time_ref_start = 0.0; time_ref_fin = 22.0; current_joint1_position = 1.485591;
-    alpha_coeffs[5] = -1.8287642508e-06; alpha_coeffs[4] = 0.00010058203; alpha_coeffs[3] = -0.001475203162;
-    alpha_coeffs[2] = 0.0; alpha_coeffs[1] = 0.0; alpha_coeffs[0] = current_joint1_position;
+    // //situation9: start at 0.0, finish at minus pi/2 : clockwise
+    // time_ref_start = 0.0; time_ref_fin = 22.0; current_joint1_position = 1.485591;
+    // alpha_coeffs[5] = -1.8287642508e-06; alpha_coeffs[4] = 0.00010058203; alpha_coeffs[3] = -0.001475203162;
+    // alpha_coeffs[2] = 0.0; alpha_coeffs[1] = 0.0; alpha_coeffs[0] = current_joint1_position;
 
 
 // sudo mv /home/kiro/workspace/CnSim_linux/cdsl_data.csv /home/kiro/CDSL/CDSL_f

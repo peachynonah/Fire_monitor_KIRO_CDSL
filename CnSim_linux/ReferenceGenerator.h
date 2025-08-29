@@ -1,9 +1,14 @@
 #pragma once
+#include <array>
+
+#define clockwise 0
+#define anticlockwise 1
+
 
 class ReferenceGenerator {
 public:
     // 생성자
-    ReferenceGenerator();
+    ReferenceGenerator(int rotate_direction, std::array<double, 6> alpha_coeffs_, double final_operating_time);
     
     // 5차 다항식 궤적 계수를 계산하는 함수
     // Input:

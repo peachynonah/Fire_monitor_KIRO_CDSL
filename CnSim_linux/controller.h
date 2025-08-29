@@ -42,9 +42,11 @@ class PDController {
         double error[2];
 
     public:
-        double calculateTau(int index, double joint_error, double joint_error_dot);
-        double tauPropo(int index, double joint_error);
-        double tauDeriv(int index, double joint_error_dot);
+        // double calculateTau(int index, double joint_error, double joint_error_dot);
+        std::array<double, 3> calculateTau(int index, double theta_desired_d, double theta_current, 
+                                           double theta_dot_desired_d, double theta_dot_d_filtered);
+        // double tauPropo(int index, double joint_error);
+        // double tauDeriv(int index, double joint_error_dot);
     
 };
 

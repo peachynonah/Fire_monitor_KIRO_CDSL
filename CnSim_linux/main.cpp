@@ -25,7 +25,8 @@
 CCAN_Manager m_canManager;
 //------   End of Can Interface Header and Variables (JSShin)   ------//
 
-//------ CDSL Controller code ------//
+
+//------ CDSL Controller code starts ------//
 #include "controller.h"
 ManualController m_manual_controller;
 PDController m_PD_controller;
@@ -34,16 +35,31 @@ DOBController m_DOB_controller;
 RealWorldConfigurer m_real_world_configurer;
 
 #include "ReferenceGenerator.h"
-ReferenceGenerator m_reference_generator;
+// CDSL control part includes this classes 
+// ReferenceGenerator (for generating polynomial reference depend by time)
 LowPassFilter m_low_pass_filter;
 #include <array>
 int loop_counter = 0;
 int error_counter = 0;
+int control_torque[2];
 
-double theta1_dot_d = 0.0; double theta2_dot_d = 0.0;
-double theta1_dot_d_filtered = 0.0; double theta2_dot_d_filtered = 0.0;
-double jPos1_prev = 0.0; double jPos2_prev = 0.0;
+// part  1
+std::array<double,2> theta_dot_d = {0.0 , 0.0};
+std::array<double,2> theta_dot_d_filtered = {0.0 , 0.0};
+std::array<double,2> jPos_prev = {0.0 , 0.0};
 double theta1_dot_d_prev = 0.0; double theta2_dot_d_prev = 0.0;
+
+std::array<double, 2> joint_error = {0.0 , 0.0};
+std::array<double, 2> joint_error_dot = {0.0 , 0.0};
+
+// controller part declaration
+std::array<double, 3> PD_control_return_joint1 = {0.0, 0.0, 0.0};
+std::array<double, 3> PD_control_return_joint2 = {0.0, 0.0, 0.0};
+
+std::array<double, 2> propo_term_torque = {0.0 , 0.0};
+std::array<double, 2> deriv_term_torque = {0.0 , 0.0};
+std::array<double, 2> sat_torque_PD = {0.0 , 0.0};
+
 // double global_theta_2_fixed = 0.0; //temp
 // double gear_ratio =  m_canManager.m_Dev[0].m_Gear_Ratio;
 
@@ -53,9 +69,38 @@ std::array<double, 2> estimated_disturbance;
 std::array<double, 2> applied_tau;
 std::array<double, 2> estimated_disturbance_not_limited;
 #include <fstream>
-//------ CDSL Controller code ------//
 
 std::ofstream output_file("cdsl_data.csv");
+
+//reference generator declaration
+std::array<double, 2> initial_joint_position_ = {0.0, -0.06}; // initial position setting
+double pulse_error = 0.3925;
+std::array<double, 2> reference_start_position_ = {initial_joint_position_[0], initial_joint_position_[1] + pulse_error};
+
+// start at reference_start_position_[0], finish at minus pi/2 : clockwise
+// std::array<double, 6> alpha_coeffs_joint1 = {reference_start_position_[0], 0.0, 0.0, -0.001475203162, 0.00010058203, -1.8287642508e-06};
+// alpha coefficients: stay at current position
+std::array<double, 6> alpha_coeffs_joint1 = {reference_start_position_[0], 0.0, 0.0, 0.0, 0.0, 0.0};
+double final_operating_time = 10.0;
+ReferenceGenerator m_reference_generator_joint1(clockwise, alpha_coeffs_joint1, final_operating_time);
+
+// start at reference_start_position_[0], finish at minus pi/6 : under = clockwise
+// std::array<double, 6> alpha_coeffs_joint2 = {reference_start_position_[1], 0.0, 0.0, -0.0004917343873, 3.35273445e-05, -6.09588083e-07};
+// alpha coefficient-6.09588083e-07
+
+// 10-7) reference is moving only pi/8, for 10 second, clockwise
+// std::array<double, 6> alpha_coeffs_joint2 = {reference_start_position_[1], 0.0, 0.0, -0.003926990816987245, 0.0005890486225480869, -2.3561944901923487e-05};
+// ReferenceGenerator m_reference_generator_joint2(anticlockwise, alpha_coeffs_joint2, final_operating_time);
+
+//10-8) reference is moving only pi/6, for 22 second, clockwise
+// std::array<double, 6> alpha_coeffs_joint2 = {reference_start_position_[1], 0.0, 0.0, -0.0004917343873011824, 3.352734458871698e-05, -6.095880834312178e-07};
+// ReferenceGenerator m_reference_generator_joint2(clockwise, alpha_coeffs_joint2, final_operating_time);
+
+// // reference is moving only pi/8, for 10 second, clockwise, starting with initial velocity 0.08[rad/sec] 
+std::array<double, 6> alpha_coeffs_joint2 = {reference_start_position_[1], -0.08, 0.0, 0.0008730091830127596, -5.095137745191394e-05, 4.3805509807655447e-07};
+ReferenceGenerator m_reference_generator_joint2(anticlockwise, alpha_coeffs_joint2, final_operating_time);
+
+//------ CDSL Controller code ends ------//
 
 // USER Paramter //
 #define DEBUG false
@@ -112,9 +157,8 @@ static void *run_rtCycle(void *pParam)
 	
 		//-------------CDSL_Control Field------------//
 		//1. basic settings
-
-		int control_torque[2];
-		control_torque[0] = 0; control_torque[1] = 0;
+		control_torque[0] = 0; 
+		control_torque[1] = 0;
 		
 		//---1-1. loop_counter
 		loop_counter++;
@@ -125,70 +169,91 @@ static void *run_rtCycle(void *pParam)
 		//---1-2. numerical differeince calculation
 		if (loop_counter > 1) {
 			double sampling_time = 0.004;
-			theta1_dot_d = (jPos[0] - jPos1_prev)/sampling_time;
-			theta2_dot_d = (jPos[1] - jPos2_prev)/sampling_time;
+			theta_dot_d[0] = (jPos[0] - jPos_prev[0])/sampling_time;
+			theta_dot_d[1] = (jPos[1] - jPos_prev[1])/sampling_time;
 		}
-		jPos1_prev = jPos[0];  jPos2_prev = jPos[1];
+			jPos_prev[0] = jPos[0];  
+			jPos_prev[1] = jPos[1];
 		// printf("\n current joint_1 velocity is : %f", theta_dot_d);
 
 		//---1-3. low pass filter
-		theta1_dot_d_filtered = m_low_pass_filter.calculate_lowpass_filter(theta1_dot_d, theta1_dot_d_prev, 0.008);
-		theta1_dot_d_prev = theta1_dot_d_filtered;
-		printf("\n filtered joint_1 velocity is : %f", theta1_dot_d_filtered);
+		theta_dot_d_filtered[0] = m_low_pass_filter.calculate_lowpass_filter(theta_dot_d[0], theta1_dot_d_prev, 0.008);
+		theta1_dot_d_prev = theta_dot_d_filtered[0];
+		printf("\n filtered joint_1 velocity is : %f", theta_dot_d_filtered[0]);
 
-		theta2_dot_d_filtered = m_low_pass_filter.calculate_lowpass_filter(theta2_dot_d, theta2_dot_d_prev);
-		theta2_dot_d_prev = theta2_dot_d_filtered;
-		printf("\n filtered joint_1 velocity is : %f", theta2_dot_d_filtered);
+		theta_dot_d_filtered[1] = m_low_pass_filter.calculate_lowpass_filter(theta_dot_d[1], theta2_dot_d_prev, 0.008);
+		theta2_dot_d_prev = theta_dot_d_filtered[1];
+		printf("\n filtered joint_1 velocity is : %f", theta_dot_d_filtered[1]);
 
-		//2. reference generation
-		double theta1_desired_d = m_reference_generator.get_position(current_time);
-		double theta1_dot_desired_d = m_reference_generator.get_velocity(current_time);
-		double theta1_ddot_desired_d = m_reference_generator.get_acceleration(current_time);
 
-		double theta2_desired_d = m_reference_generator.get_position(current_time);
-		double theta2_dot_desired_d = m_reference_generator.get_velocity(current_time);
+		std::array<double, 2> theta_desired_d, theta_dot_desired_d, theta_ddot_desired_d;
 
-		printf("\nreference theta2_desired_d is : %f", theta2_desired_d);
-		printf("\nreference theta2_dot_desired_d is : %f\n", theta2_dot_desired_d);
+		theta_desired_d[0] = m_reference_generator_joint1.get_position(current_time);
+		theta_dot_desired_d[0] = m_reference_generator_joint1.get_velocity(current_time);
+		theta_ddot_desired_d[0] = m_reference_generator_joint1.get_acceleration(current_time);
+
+		theta_desired_d[1] = m_reference_generator_joint2.get_position(current_time);
+		theta_dot_desired_d[1] = m_reference_generator_joint2.get_velocity(current_time);
+		theta_ddot_desired_d[1] = m_reference_generator_joint2.get_acceleration(current_time);
+
 		printf("\ncurrent joint_1 is  : %f\n", jPos[0]);
 		printf("\ncurrent joint_2 is  : %f\n", jPos[1]);
 
-		//---2-1. position, velocity error define
-		double joint_error_1 = theta1_desired_d - jPos[0];
-		double joint_error_1_dot = theta1_dot_desired_d - theta1_dot_d_filtered; 
+		//---2-1. position, velocity error define		
+		for (int i=0; i<MAX_DOF; i++){
+	     	joint_error[i] = theta_desired_d[i] - jPos[i];
+		 	joint_error_dot[i] = theta_dot_desired_d[i] - theta_dot_d_filtered[i]; 
+			}
 
-		double joint_error_2 = theta2_desired_d - jPos[1];
-		double joint_error_2_dot = theta2_dot_desired_d - theta2_dot_d_filtered; 
+		// joint_error[0] = theta_desired_d[0] - jPos[0];
+		// joint_error_dot[0] = theta_dot_desired_d[0] - theta_dot_d_filtered[0]; 
 
+		// joint_error[1] = theta_desired_d[1] - jPos[1];
+		// joint_error_dot[1] = theta_dot_desired_d[1] - theta_dot_d_filtered[1]; 
 
 
 		//3. control mode selection
-		int controlmode = ctrl_fl_dob; // 0: Manual, 1: PD, 2: FL, 3: FL + DOB
+		int controlmode = ctrl_pd; // 0: Manual, 1: PD, 2: FL, 3: FL + DOB
 		switch (controlmode)
 		{
 		case ctrl_manual:
 			{	
 			control_torque[0] = m_manual_controller.calculateTau(0); // Example input torque
-			control_torque[1] = m_manual_controller.calculateTau(0);
+			control_torque[1] = m_manual_controller.calculateTau(500);
 			// printf("\ninput of manual controller is (%d, %d)\n", control_torque[0], control_torque[1]);
 			break;
 			}
 		
 		case ctrl_pd:
 			{
-			control_torque[0] = static_cast<int>(m_PD_controller.calculateTau(0, joint_error_1, joint_error_1_dot));
-			control_torque[1] = 0.0; // static_cast<int>(m_PD_controller.calculateTau(1, joint_error_2, joint_error_2_dot)); 
-			printf("\ninput of pd controller is (%d, %d)\n", control_torque[0], control_torque[1]);
-			
-			// derivate term debugging
-			double propo_term_torque = m_PD_controller.tauPropo(0, joint_error_1);
-			double deriv_term_torque = m_PD_controller.tauDeriv(0, joint_error_1_dot);
+			PD_control_return_joint1 = 	m_PD_controller.calculateTau(0, theta_desired_d[0], jPos[0], theta_dot_desired_d[0], theta_dot_d_filtered[0]);
+			PD_control_return_joint2 = 	m_PD_controller.calculateTau(1, theta_desired_d[1], jPos[1], theta_dot_desired_d[1], theta_dot_d_filtered[1]);
+
+			propo_term_torque[0] = m_real_world_configurer.InvertTorquesign(PD_control_return_joint1[0]);
+			deriv_term_torque[0] = m_real_world_configurer.InvertTorquesign(PD_control_return_joint1[1]);
+
+			propo_term_torque[1] = m_real_world_configurer.InvertTorquesign(PD_control_return_joint2[0]);
+			deriv_term_torque[1] = m_real_world_configurer.InvertTorquesign(PD_control_return_joint2[1]);
+
+			sat_torque_PD[0] = m_real_world_configurer.TorqueSaturation(PD_control_return_joint1[2], 1300);
+			sat_torque_PD[1] = m_real_world_configurer.TorqueSaturation(PD_control_return_joint2[2], 2500);
+
+			// real control input in permil + saturation applied  of FL controller 
+			control_torque[0] = static_cast<int>(m_real_world_configurer.InvertTorquesign(sat_torque_PD[0]));
+			control_torque[1] = static_cast<int>(m_real_world_configurer.InvertTorquesign(sat_torque_PD[1]));
+
+			// control_torque[0] = 0.0;
+			// control_torque[1] = 0.0;
 
 			// csv file output writing
-			output_file << theta1_desired_d <<"," <<jPos[0] <<"," 
-					    << theta1_dot_desired_d << "," << theta1_dot_d_filtered << "," 
+			output_file << theta_desired_d[0] <<"," <<jPos[0] <<","
+						<< theta_desired_d[1] <<"," <<jPos[1] <<","
+					    << theta_dot_desired_d[0] << "," << theta_dot_d_filtered[0] << "," 
+					    << theta_dot_desired_d[1] << "," << theta_dot_d_filtered[1] << "," 
 						<< control_torque[0] << ","
-						<< propo_term_torque << "," << deriv_term_torque << "," 
+						<< control_torque[1] << ","
+						<< propo_term_torque[0] << "," << deriv_term_torque[0] << "," 
+						<< propo_term_torque[1] << "," << deriv_term_torque[1] << "," 
 						<< current_time  << std::endl;
 			break;
 			}
@@ -198,11 +263,12 @@ static void *run_rtCycle(void *pParam)
 			double global_theta_2_fixed = 0.0;
 			double gear_ratio =  m_canManager.m_Dev[0].m_Gear_Ratio;
 				
-			std::array<double, 4>torque_calculate = m_FL_controller.calculateTau(theta1_ddot_desired_d, joint_error_1, joint_error_1_dot,
+			std::array<double, 4>torque_calculate = m_FL_controller.calculateTau(theta_ddot_desired_d[0], joint_error[0], joint_error_dot[0],
                                 							 					 jPos[0], global_theta_2_fixed, 
-			 																	 theta1_dot_d_filtered, theta2_dot_d_filtered);
+			 																	 theta_dot_d_filtered[0], theta_dot_d_filtered[1]);
 
-			double torque_temp[4];																	 
+			double torque_temp[4];												
+
 			torque_temp[0] = m_real_world_configurer.Nm_to_permil(torque_calculate[0], gear_ratio);
 			torque_temp[1] = m_real_world_configurer.Nm_to_permil(torque_calculate[1], gear_ratio);
 			torque_temp[2] = m_real_world_configurer.Nm_to_permil(torque_calculate[2], gear_ratio);
@@ -214,7 +280,7 @@ static void *run_rtCycle(void *pParam)
 
 			double sat_torque_permil[2];
 			sat_torque_permil[0] = m_real_world_configurer.TorqueSaturation(torque_temp[0], 1300);
-			sat_torque_permil[1] = m_real_world_configurer.TorqueSaturation(torque_temp[1], 2000);
+			sat_torque_permil[1] = m_real_world_configurer.TorqueSaturation(torque_temp[1], 2700);
 
 			// real control input in permil + saturation applied  of FL controller 
 			control_torque[0] = static_cast<int>(m_real_world_configurer.InvertTorquesign(sat_torque_permil[0]));
@@ -223,8 +289,8 @@ static void *run_rtCycle(void *pParam)
 			printf("\ninput of FL controller in main is (%d, %d)\n", control_torque[0], control_torque[1]);
 
 			// csv file output writing
-			output_file << theta1_desired_d <<"," <<jPos[0] <<"," 
-					    << theta1_dot_desired_d << "," << theta1_dot_d_filtered << "," 
+			output_file << theta_desired_d[0] <<"," <<jPos[0] <<"," 
+					    << theta_dot_desired_d[0] << "," << theta_dot_d_filtered[0] << "," 
 						<< control_torque[0] << ","
 						<< h_torque[0] << "," 
 						<< current_time  << std::endl;
@@ -239,9 +305,9 @@ static void *run_rtCycle(void *pParam)
 			double gear_ratio =  m_canManager.m_Dev[0].m_Gear_Ratio;
 			
 			//FL 제어기 먼저 실행
-			std::array<double, 4> torque_calculate = m_FL_controller.calculateTau(theta1_ddot_desired_d, joint_error_1, joint_error_1_dot,
+			std::array<double, 4> torque_calculate = m_FL_controller.calculateTau(theta_ddot_desired_d[0], joint_error[0], joint_error_dot[0],
                                 							 					 	  jPos[0], global_theta_2_fixed, 
-			 																	      theta1_dot_d_filtered, theta2_dot_d_filtered); // torque_Nm
+			 																	      theta_dot_d_filtered[0], theta_dot_d_filtered[1]); // torque_Nm
 			// printf("u_FL_1 : {%f}\n" , u_FL[0]);
 			// printf("u_FL_2 : {%f}\n" , u_FL[1]);
 			
@@ -254,7 +320,7 @@ static void *run_rtCycle(void *pParam)
 			//DOB torque generation [Nm]
 			// double time_constant = 5e-3; // 튜닝 파라미터
 			double time_constant = 0.9;
-			estimated_disturbance = m_DOB_controller.EstimateDisturbance(jPos[0], jPos[1], theta1_dot_d_filtered, theta2_dot_d_filtered, u_hat, time_constant);
+			estimated_disturbance = m_DOB_controller.EstimateDisturbance(jPos[0], jPos[1], theta_dot_d_filtered[0], theta_dot_d_filtered[1], u_hat, time_constant);
 			printf("estimated_disturbance_1 : {%f} \n" , estimated_disturbance[0]);
 			printf("estimated_disturbance_2 : {%f} \n" , estimated_disturbance[1]);
 
@@ -308,15 +374,15 @@ static void *run_rtCycle(void *pParam)
 			//printf("\ninput of DOB controller is (%d, %d)\n", control_torque_debug[0], control_torque_debug[1]);
 			
 			// // csv file output writing
-			output_file << theta1_desired_d <<"," <<jPos[0] <<"," 
-					    << theta1_dot_desired_d << "," << theta1_dot_d_filtered << "," 
+			output_file << theta_desired_d[0] <<"," <<jPos[0] <<"," 
+					    << theta_dot_desired_d[0] << "," << theta_dot_d_filtered[0] << "," 
 						<< applied_tau[0] << "," 
 						<< estimated_disturbance[0]  
 						<< "," << current_time  << std::endl;
 
 			// csv file output writing(2)
-			// output_file << theta1_desired_d <<"," <<jPos[0] <<"," 
-			// 		    << theta1_dot_desired_d << "," << theta1_dot_d_filtered << "," 
+			// output_file << theta_desired_d[0] <<"," <<jPos[0] <<"," 
+			// 		    << theta_dot_desired_d[0] << "," << theta_dot_d_filtered[0] << "," 
 			// 			<< applied_tau[0] << "," 
 			// 			<< estimated_disturbance[0] << estimated_disturbance_not_limited[0] << "," 
 			// 			<< "," << current_time  << std::endl;
@@ -402,17 +468,31 @@ int main(int nArgc, char *ppArgv[])
 	// Initialize CAN Controller
 	m_canManager.Initialize(opMode);
 
+	//////////////CDSL control field
+
 	//csv file generation for PD 
-	// output_file << "joint_pos_desired, joint_pos, joint_vel_desired, joint_vel_filtered, target_torque, propo_term_torque, deriv_term_torque, current_time" << std::endl;
+	output_file << "joint1_pos_desired, joint1_pos, "
+				<< "joint2_pos_desired, joint2_pos, "
+			    << "joint1_vel_desired, joint1_vel_filtered, "
+				<< "joint2_vel_desired, joint2_vel_filtered, "
+				<< "target_torque_joint1, "
+				<< "target_torque_joint2, "
+				<< "propo_term_torque_joint1, deriv_term_torque_joint1, "
+				<< "propo_term_torque_joint2, deriv_term_torque_joint2, "
+				<< "current_time"
+				<< std::endl;
 	
 	// //csv file generation for FL
 	// output_file << "joint_pos_desired_1, joint_pos_1, joint_vel_desired_1, joint_vel_filtered_1, input torque_1, h term torque_1, current_time" << std::endl;
 	
 	// csv file generation for FL_DOB
-	output_file << "joint_pos_desired_1, joint_pos_1, joint_vel_desired_1, joint_vel_filtered_1, input torque_1_w.DOB[Nm], DOB Torque Term[Nm], current_time" << std::endl;
+	// output_file << "joint_pos_desired_1, joint_pos_1, joint_vel_desired_1, joint_vel_filtered_1, input torque_1_w.DOB[Nm], DOB Torque Term[Nm], current_time" << std::endl;
 	
 	// csv file generation for FL_DOB_2(estimated_disturbance term compare)
 	// output_file << "joint_pos_desired_1, joint_pos_1, joint_vel_desired_1, joint_vel_filtered_1, input torque_1_w.DOB[Nm], DOB Torque Term[Nm], DOB Torque_Not_Limited Term[Nm], current_time" << std::endl;
+
+	//////////////CDSL control field ends
+
 
 	//------   create thread
 	pthread_t run_rt_cannon_thread; // real time loop for cannon control
