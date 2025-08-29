@@ -118,35 +118,45 @@ FLController::FLController() {
     Kp_FL[0] = 2500.0; Kp_FL[1] = 0.0;
     Kd_FL[0] = 3500.0; Kd_FL[1] = 0.0;
 }
-
-std::array<double, 4>FLController::calculateTau(double theta1_ddot_desired_d, double joint1_error, double joint1_error_dot, 
-                                  double theta1, double theta2, double theta1_dot, double theta2_dot){
-    tau[0] = 0.0;
-    tau[1] = 0.0;
+std::array<double, 4>FLController::calculateTau(
+    std::array<double, 2> theta_current,
+    std::array<double, 2> theta_desired_d,
+    std::array<double, 2> theta_dot_current,
+    std::array<double, 2> theta_dot_desired_d,
+    std::array<double, 2> theta_ddot_desired_d)
+    {
+    static bool flag = false;
+    if (flag == false){
+        flag = true;
+        tau[0] = 0.0;
+        tau[1] = 0.0;
+    }
     //ModelReference: This is a placeholder for FL controller's tau calculation
-    std::array<double, 4> mass_matrix = m_model_dynamics.get_mass_matrix(theta1, theta2);
+    std::array<double, 4> mass_matrix = m_model_dynamics.get_mass_matrix(theta_current[0], theta_current[1]);
     double m11 = mass_matrix[0]; double m12 = mass_matrix[1]; 
     double m21 = mass_matrix[2]; double m22 = mass_matrix[3]; 
     // printf("\nin FL controller, the mass matrix {m11, m12, m21, m22 is}: (%f, %f, %f, %f)\n", m11, m12, m21, m22);	
-    
-    std::array<double, 2> nonlinear_dynamics_term = m_model_dynamics.get_nonlinear_dynamics(theta1, theta2, theta1_dot, theta2_dot);
+
+    std::array<double, 2> nonlinear_dynamics_term = m_model_dynamics.get_nonlinear_dynamics(theta_current[0], theta_current[1], theta_dot_current[0], theta_dot_current[1]);
     double h1 = nonlinear_dynamics_term[0];
     double h2 = nonlinear_dynamics_term[1];
    // printf("\nin FL controller, the nonlinear term h {h1, h2 is}: (%f, %f)\n", h1, h2);
 
-    //temp..
-    double joint2_error = 0.0; double joint2_error_dot = 0.0; double theta2_ddot_desired_d = 0.0;
-    double temp1 = theta1_ddot_desired_d + Kp_FL[0] * joint1_error + Kd_FL[0] * joint1_error_dot;
-    double temp2 = theta2_ddot_desired_d + Kp_FL[1] * joint2_error + Kd_FL[1] * joint2_error_dot;
- 
+    //temp
+    for (int i=0; i<2; i++){
+        joint_error[i] = theta_desired_d[i] - theta_current[i];
+        joint_error_dot[i] = theta_dot_desired_d[i] - theta_dot_current[i];
+    }
+    temp1 = theta_ddot_desired_d[0] + Kp_FL[0] * joint_error[0] + Kd_FL[0] * joint_error_dot[0];
+    temp2 = theta_ddot_desired_d[1] + Kp_FL[1] * joint_error[1] + Kd_FL[1] * joint_error_dot[1];
     tau_nonlinear_term[0] = h1;
     tau_nonlinear_term[1] = h2;
     
     tau[0] = m11 * (temp1) + m12 * (temp2) + h1; // Nm
     tau[1] = m21 * (temp1) + m22 * (temp2) + h2;
-
     return {tau[0], tau[1], tau_nonlinear_term[0], tau_nonlinear_term[1]}; // in Nm, torque minus is required
 }
+
 
 
 DOBController::DOBController() {

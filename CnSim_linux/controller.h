@@ -51,31 +51,40 @@ class PDController {
 };
 
 
+
 class FLController {
     public:
         double Kp_FL[2];
         double Kd_FL[2];
-        FLController();
         
         double tau[2];
         double error[2];
+
+        std::array<double, 2> joint_error;
+        std::array<double, 2> joint_error_dot;
+
+        double tau_nonlinear_term[2];
+        double temp1, temp2;
 
         double tauPropo(int index, double joint_error);
         double tauDeriv(int index, double joint_error_dot);
         double tau_propo[2];
         double tau_deriv[2];
-        double tau_nonlinear_term[2];
+        FLController();
 
     public:
         // double calculateTau(int index, double joint_error, double joint_error_dot);
-        std::array<double, 4>calculateTau(double theta1_ddot_desired_d, double joint_error, double joint_error_dot, 
-                                           double theta1, double theta2, double theta1_dot, double theta2_dot);
-
+        std::array<double, 4> calculateTau(
+            std::array<double, 2> theta_current,
+            std::array<double, 2> theta_desired_d,
+            std::array<double, 2> theta_dot_current,
+            std::array<double, 2> theta_dot_desired_d,
+            std::array<double, 2> theta_ddot_desired_d);
         int Nm_to_permil(double tau_in_Nm, double gear_ratio);
         int torque_saturate(int input_in_permil, int saturation_in_permil);
-        
     
 };
+
 
 class DOBController {
     public:
