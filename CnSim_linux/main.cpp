@@ -67,7 +67,8 @@ std::array<double, 2> u_FL;
 std::array<double, 2> estimated_disturbance;
 std::array<double, 2> saturated_DOB_command;
 std::array<double, 2> applied_tau;
-std::array<double, 2> estimated_disturbance_not_limited;
+std::array<double, 2> estimated_disturbance_permil_debug;
+std::array<double, 2> saturated_disturbance_permil_debug;
 #include <fstream>
 
 std::ofstream output_file("cdsl_data.csv");
@@ -75,24 +76,20 @@ std::ofstream output_file("cdsl_data.csv");
 //reference generator declaration
 ReferenceGenerator m_reference_generator_joint1;
 ReferenceGenerator m_reference_generator_joint2;
-int direction_ = reference_uprising;
 
-
+//FFPP hcpyon
 // reference generation
-std::array<double, 2> initial_joint_position_ = {-1.508, 0.471378}; // initial position setting
+std::array<double, 2> initial_joint_position_ ={3.217, 0.027}; // initial position setting
 
 double time_ref_start_ = 0.0;
-double time_ref_fin_ = 10.0;
-
-// double pulse_error_j2 = 0.3925;
-// double reference_velocity_offset_j2 = 0.1; // pulse error and reference velocity offset is required at uprising case
+double time_ref_fin_ = 30.0;
 
 double pulse_error_j2 = 0.0;
 double reference_velocity_offset_j2 = 0.0; // pulse error and reference velocity offset is required at uprising case
 
-std::array<double, 2> desired_movement = {-1.57, -0.3925}; // in case of uprising, pulse_error + desired_movenemt[1] is actual movement of joint 2
+std::array<double, 2> desired_movement = {0.9, 0};
+// std::array<double, 2> desired_movement = {-initial_joint_position_[0], -initial_joint_position_[1]};
 
-// std::array<double, 2> reference_start_position_ = {initial_joint_position_[0], initial_joint_position_[1] + pulse_error_j2};
 std::array<double, 3> start_state_j1 = {initial_joint_position_[0], 0.0, 0.0};
 std::array<double, 3> final_state_j1 = {initial_joint_position_[0] + desired_movement[0], 0.0, 0.0};
 
@@ -101,7 +98,7 @@ std::array<double, 3> final_state_j2 = {initial_joint_position_[1] + pulse_error
 
 int controlmode = ctrl_fl_dob; // manual, ctrl_pd, ctrl_fl, ctrl_fl_dob
 
-//------ CDSL Controller code ends ------//
+//------ CDSL Controller code ends ------//m
 
 // USER Paramter //
 #define DEBUG false
@@ -198,10 +195,9 @@ static void *run_rtCycle(void *pParam)
 		theta_dot_desired_d[1] = m_reference_generator_joint2.get_velocity(current_time, theta_dot_d[1]);
 		theta_ddot_desired_d[1] = m_reference_generator_joint2.get_acceleration(current_time, 0.0);
 
-		printf("\ncurrent joint_1 is  : %f\n", jPos[0]);
-		printf("\ncurrent joint_2 is  : %f\n", jPos[1]);
+		printf("\ncurrent {joint_1, Joint_2} is  : { %f , %f } \n : ", jPos[0] , jPos[1]);
 
-		//3. control mode selection
+		// 3. control mode selection
 		// int controlmode = ctrl_fl_dob; // 0: Manual, 1: PD, 2: FL, 3: FL + DOB
 		switch (controlmode)
 		{
@@ -224,15 +220,15 @@ static void *run_rtCycle(void *pParam)
 			propo_term_torque[1] = m_real_world_configurer.InvertTorquesign(PD_control_return_joint2[0]);
 			deriv_term_torque[1] = m_real_world_configurer.InvertTorquesign(PD_control_return_joint2[1]);
 
-			sat_torque_PD[0] = m_real_world_configurer.TorqueSaturation(PD_control_return_joint1[2], 1300);
-			sat_torque_PD[1] = m_real_world_configurer.TorqueSaturation(PD_control_return_joint2[2], 600);
+			sat_torque_PD[0] = m_real_world_configurer.TorqueSaturation(PD_control_return_joint1[2], 1000);
+			sat_torque_PD[1] = m_real_world_configurer.TorqueSaturation(PD_control_return_joint2[2], 2500);
 
 			// real control input in permil + saturation applied  of FL controller
-			// control_torque[0] = static_cast<int>(m_real_world_configurer.InvertTorquesign(sat_torque_PD[0]));
-			// control_torque[1] = static_cast<int>(m_real_world_configurer.InvertTorquesign(sat_torque_PD[1]));
+			control_torque[0] = static_cast<int>(m_real_world_configurer.InvertTorquesign(sat_torque_PD[0]));
+			control_torque[1] = static_cast<int>(m_real_world_configurer.InvertTorquesign(sat_torque_PD[1]));
 
-			control_torque[0] = 0.0;
-			control_torque[1] = 0.0;
+			// control_torque[0] = 0.0;
+			// control_torque[1] = 0.0;
 
 			// csv file output writing
 			output_file << theta_desired_d[0] <<"," <<jPos[0] <<","
@@ -257,8 +253,8 @@ static void *run_rtCycle(void *pParam)
 																				  theta_ddot_desired_d);
 
 			// real control input in permil + saturation applied  of FL controller 
-			control_torque[0] = static_cast<int>(m_real_world_configurer.TauConvert(torque_calculate[0], gear_ratio, 990));
-			control_torque[1] = static_cast<int>(m_real_world_configurer.TauConvert(torque_calculate[1], gear_ratio, 3000));
+			control_torque[0] = static_cast<int>(m_real_world_configurer.TauConvert(torque_calculate[0], gear_ratio, 1000));
+			control_torque[1] = static_cast<int>(m_real_world_configurer.TauConvert(torque_calculate[1], gear_ratio, 2500));
 
 			double h_torque[2];
 			h_torque[0] = m_real_world_configurer.TauConvert(torque_calculate[2], gear_ratio, 9999);
@@ -298,33 +294,31 @@ static void *run_rtCycle(void *pParam)
 			printf("estimated_disturbance_1 : {%f} \n" , estimated_disturbance[0]);
 			printf("estimated_disturbance_2 : {%f} \n" , estimated_disturbance[1]);
 
-			saturated_DOB_command[0] = m_real_world_configurer.TorqueSaturation(estimated_disturbance[0], 0.1); // Nm, link side
-			saturated_DOB_command[1] = m_real_world_configurer.TorqueSaturation(estimated_disturbance[1], 0.1); // Nm, link side
+			saturated_DOB_command[0] = m_real_world_configurer.TorqueSaturation(estimated_disturbance[0], 135); // Nm, link side
+			saturated_DOB_command[1] = m_real_world_configurer.TorqueSaturation(estimated_disturbance[1], 220); // Nm, link side
 
 			u_hat[0] = u_FL[0] - saturated_DOB_command[0]; //update
 			u_hat[1] = u_FL[1] - saturated_DOB_command[1]; //update	
 
 			applied_tau[0] = u_FL[0]  - saturated_DOB_command[0];
 			applied_tau[1] = u_FL[1]  - saturated_DOB_command[1];			
-
-			control_torque[0] = static_cast<int>(m_real_world_configurer.TauConvert(applied_tau[0], gear_ratio, 1000));
-			control_torque[1] = static_cast<int>(m_real_world_configurer.TauConvert(applied_tau[1], gear_ratio, 2500));		
+			// //FFPP hcpyon
+ 			control_torque[0] = static_cast<int>(m_real_world_configurer.TauConvert(applied_tau[0], gear_ratio, 1000));
+ 			control_torque[1] = static_cast<int>(m_real_world_configurer.TauConvert(applied_tau[1], gear_ratio, 2500));		
 
 			// control_torque[0] = 0.0;
-			// control_torque[1] = 0.0;	
+			// control_torque[1] = 0.0;
 
 			printf("\ninput of DOB controller is (%d, %d)\n", control_torque[0], control_torque[1]);
 			//debugging part hcpyon
-			// printf("\n reference generator debugging: {alpha_coefficients 0 ~ 5 of joint 2 is } = (%f, %f, %f, %f, %f, %f)\n", 
-			// 																	m_reference_generator_joint2.alpha_coeffs[0],
-			// 																m_reference_generator_joint2.alpha_coeffs[1],
-			// 															m_reference_generator_joint2.alpha_coeffs[2],
-			// 														m_reference_generator_joint2.alpha_coeffs[3],
-			// 													m_reference_generator_joint2.alpha_coeffs[4],
-			// 												m_reference_generator_joint2.alpha_coeffs[5]);
-			
-			// printf("refgencounter %d", refgencounter);
-			
+
+				
+		estimated_disturbance_permil_debug[0] = m_real_world_configurer.TauConvert(estimated_disturbance[0], gear_ratio, 9999);
+		estimated_disturbance_permil_debug[1] = m_real_world_configurer.TauConvert(estimated_disturbance[1], gear_ratio, 9999);
+
+		saturated_disturbance_permil_debug[0] = m_real_world_configurer.TauConvert(saturated_DOB_command[0], gear_ratio, 9999);
+		saturated_disturbance_permil_debug[1] = m_real_world_configurer.TauConvert(saturated_DOB_command[1], gear_ratio, 9999);
+
 			// csv file output writing
 			output_file << theta_desired_d[0] <<"," <<jPos[0] <<","
 						<< theta_desired_d[1] <<"," <<jPos[1] <<","
@@ -332,8 +326,8 @@ static void *run_rtCycle(void *pParam)
 					    << theta_dot_desired_d[1] << "," << theta_dot_d_filtered[1] << "," 
 						<< control_torque[0] << ","
 						<< control_torque[1] << ","
-						<< estimated_disturbance[0] << "," << saturated_DOB_command[0] << "," 
-						<< estimated_disturbance[1] << "," << saturated_DOB_command[1] << "," 
+						<< estimated_disturbance_permil_debug[0] << "," << saturated_disturbance_permil_debug[0] << "," 
+						<< estimated_disturbance_permil_debug[1] << "," << saturated_disturbance_permil_debug[1] << "," 
 						<< current_time  << std::endl;
 			break;
 
@@ -422,15 +416,10 @@ int main(int nArgc, char *ppArgv[])
 
 
 	//////////////CDSL control field
-	bool reference_flag = false;
-
-	if (!reference_flag){
 	m_reference_generator_joint1.computeAlphaCoeffs(time_ref_start_, time_ref_fin_, start_state_j1, final_state_j1);
 	m_reference_generator_joint2.computeAlphaCoeffs(time_ref_start_, time_ref_fin_, start_state_j2, final_state_j2);
-	reference_flag = true;
-	}
 
-	// int controlmode = ctrl_fl_dob;
+
 	switch(controlmode)
 	{
 	case(ctrl_pd):

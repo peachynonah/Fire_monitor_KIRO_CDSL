@@ -61,8 +61,8 @@ int ManualController::calculateTau(int input_tau) {
 
 PDController::PDController() {
     // Initialize gains
-    Kp_PD[0] = 5500.0; Kp_PD[1] = 0.0; 
-    Kd_PD[0] = 3500.0; Kd_PD[1] = 0.0; 
+    Kp_PD[0] = 5500.0; Kp_PD[1] = 6000.0; 
+    Kd_PD[0] = 3500.0; Kd_PD[1] = 4000.0; 
 }
 
 std::array<double,3> PDController::calculateTau(int index, double theta_desired_d, double theta_current, 
@@ -78,8 +78,8 @@ std::array<double,3> PDController::calculateTau(int index, double theta_desired_
 
 FLController::FLController() {
     // Initialize gains
-    Kp_FL[0] = 2500.0; Kp_FL[1] = 2500.0;
-    Kd_FL[0] = 3500.0; Kd_FL[1] = 300.0;
+    Kp_FL[0] = 4000.0; Kp_FL[1] = 4000.0;
+    Kd_FL[0] = 3500.0; Kd_FL[1] = 3500.0;
 }
 std::array<double, 4>FLController::calculateTau(
     std::array<double, 2> theta_current,

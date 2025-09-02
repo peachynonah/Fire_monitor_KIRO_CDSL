@@ -113,8 +113,8 @@ def plot_joint_data(file_number, start_time=None, end_time=None):
 
     # Plot 3,2: Joint 2 Torque
     axs[2, 1].plot(df["current_time"].to_numpy(), df["target_torque_joint2"].to_numpy(), label="Target Torque (J2)")
-    axs[2, 1].plot(df["current_time"].to_numpy(), df["estimated_disturbance_joint2"].to_numpy(), label="Estimated Disturbance (J2)", linestyle='--')
-    axs[2, 1].plot(df["current_time"].to_numpy(), df["saturated_DOB_joint2"].to_numpy(), label="saturated DOB input (J2)", linestyle=':')
+    axs[2, 1].plot(df["current_time"].to_numpy(), df["estimated_disturbance_joint2"].to_numpy(), label="Estimated Disturbance (J2)", linestyle='--', linewidth = 2.5)
+    axs[2, 1].plot(df["current_time"].to_numpy(), df["saturated_DOB_joint2"].to_numpy(), label="saturated DOB input (J2)", linestyle=':', linewidth = 4.5)
     axs[2, 1].set_xlabel("Time (s)")
     axs[2, 1].set_ylabel("Torque (permil)")
     axs[2, 1].set_title("Joint 2: Torque Components")
